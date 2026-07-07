@@ -1,0 +1,796 @@
+<!DOCTYPE html>
+<html lang="de">
+<head>
+<meta charset="UTF-8">
+<meta name="viewport" content="width=device-width, initial-scale=1.0">
+<title>Rang System</title>
+<link href="https://fonts.googleapis.com/css2?family=Cinzel+Decorative:wght@700;900&family=Rajdhani:wght@400;600;700&display=swap" rel="stylesheet">
+<style>
+  :root {
+    --bg: #0a0a0f;
+    --panel: #12121a;
+    --border: #2a2a3a;
+    --text: #c8c8d8;
+    --muted: #5a5a7a;
+
+    --e-col: #7a8fa0;
+    --e-glow: #7a8fa055;
+    --d-col: #7ab87a;
+    --d-glow: #7ab87a55;
+    --c-col: #c0a050;
+    --c-glow: #c0a05055;
+    --b-col: #6090d0;
+    --b-glow: #6090d055;
+    --a-col: #d07030;
+    --a-glow: #d0703055;
+    --s-col: #d4a020;
+    --s-glow: #d4a02088;
+  }
+
+  * { box-sizing: border-box; margin: 0; padding: 0; }
+
+  body {
+    background: var(--bg);
+    color: var(--text);
+    font-family: 'Rajdhani', sans-serif;
+    min-height: 100vh;
+    display: flex;
+    flex-direction: column;
+    align-items: center;
+    padding: 40px 20px;
+    overflow-x: hidden;
+  }
+
+  /* Animated background grid */
+  body::before {
+    content: '';
+    position: fixed;
+    inset: 0;
+    background-image:
+      linear-gradient(rgba(255,255,255,0.015) 1px, transparent 1px),
+      linear-gradient(90deg, rgba(255,255,255,0.015) 1px, transparent 1px);
+    background-size: 60px 60px;
+    pointer-events: none;
+    z-index: 0;
+  }
+
+  body::after {
+    content: '';
+    position: fixed;
+    inset: 0;
+    background: radial-gradient(ellipse at 50% 0%, rgba(100,80,200,0.08) 0%, transparent 70%);
+    pointer-events: none;
+    z-index: 0;
+  }
+
+  .container {
+    position: relative;
+    z-index: 1;
+    width: 100%;
+    max-width: 860px;
+  }
+
+  /* Title */
+  .title {
+    font-family: 'Cinzel Decorative', serif;
+    font-size: clamp(1.6rem, 5vw, 2.8rem);
+    font-weight: 900;
+    text-align: center;
+    letter-spacing: 0.12em;
+    color: #fff;
+    margin-bottom: 8px;
+    text-shadow: 0 0 40px rgba(180,150,255,0.3);
+  }
+
+  .subtitle {
+    text-align: center;
+    color: var(--muted);
+    font-size: 0.95rem;
+    letter-spacing: 0.25em;
+    text-transform: uppercase;
+    margin-bottom: 52px;
+  }
+
+  /* Rank ladder */
+  .rank-ladder {
+    display: flex;
+    flex-direction: column;
+    gap: 0;
+    margin-bottom: 48px;
+  }
+
+  .rank-item {
+    display: grid;
+    grid-template-columns: 90px 1fr auto;
+    align-items: center;
+    gap: 20px;
+    padding: 18px 24px;
+    border: 1px solid var(--border);
+    border-bottom: none;
+    background: var(--panel);
+    position: relative;
+    transition: all 0.3s ease;
+    cursor: default;
+  }
+
+  .rank-item:first-child { border-radius: 12px 12px 0 0; }
+  .rank-item:last-child  { border-radius: 0 0 12px 12px; border-bottom: 1px solid var(--border); }
+
+  .rank-item.active {
+    background: #16161f;
+    z-index: 2;
+    transform: scaleX(1.012);
+    border-color: var(--active-col, var(--border));
+    box-shadow: 0 0 30px var(--active-glow, transparent), inset 0 0 0 1px var(--active-col, transparent);
+  }
+
+  .rank-item.completed {
+    opacity: 0.55;
+  }
+
+  .rank-item.locked {
+    opacity: 0.35;
+  }
+
+  /* Connector line between ranks */
+  .rank-item:not(:last-child)::after {
+    content: '';
+    position: absolute;
+    bottom: -1px;
+    left: 50%;
+    transform: translateX(-50%);
+    width: 2px;
+    height: 1px;
+    background: var(--border);
+    z-index: 1;
+  }
+
+  /* Badge */
+  .rank-badge {
+    width: 72px;
+    height: 72px;
+    border-radius: 12px;
+    display: flex;
+    align-items: center;
+    justify-content: center;
+    font-family: 'Cinzel Decorative', serif;
+    font-size: 2rem;
+    font-weight: 700;
+    border: 2px solid currentColor;
+    position: relative;
+    flex-shrink: 0;
+    transition: box-shadow 0.3s;
+  }
+
+  .rank-item.active .rank-badge {
+    box-shadow: 0 0 20px currentColor;
+    animation: pulse-badge 2.5s ease-in-out infinite;
+  }
+
+  @keyframes pulse-badge {
+    0%, 100% { box-shadow: 0 0 15px currentColor; }
+    50%       { box-shadow: 0 0 35px currentColor, 0 0 60px currentColor; }
+  }
+
+  .rank-badge.e { color: var(--e-col); background: var(--e-glow); }
+  .rank-badge.d { color: var(--d-col); background: var(--d-glow); }
+  .rank-badge.c { color: var(--c-col); background: var(--c-glow); }
+  .rank-badge.b { color: var(--b-col); background: var(--b-glow); }
+  .rank-badge.a { color: var(--a-col); background: var(--a-glow); }
+  .rank-badge.s { color: var(--s-col); background: var(--s-glow); }
+
+  /* Rank info */
+  .rank-info { flex: 1; }
+
+  .rank-name {
+    font-size: 1.3rem;
+    font-weight: 700;
+    letter-spacing: 0.1em;
+    text-transform: uppercase;
+    margin-bottom: 6px;
+    color: #e0e0f0;
+  }
+
+  .rank-item.active .rank-name { color: #fff; }
+
+  .rank-desc {
+    font-size: 0.82rem;
+    color: var(--muted);
+    letter-spacing: 0.05em;
+    margin-bottom: 10px;
+  }
+
+  /* Progress bar */
+  .progress-wrap {
+    display: flex;
+    align-items: center;
+    gap: 10px;
+  }
+
+  .progress-track {
+    flex: 1;
+    height: 6px;
+    background: rgba(255,255,255,0.06);
+    border-radius: 3px;
+    overflow: hidden;
+  }
+
+  .progress-fill {
+    height: 100%;
+    border-radius: 3px;
+    background: currentColor;
+    transition: width 0.6s cubic-bezier(0.34, 1.56, 0.64, 1);
+    position: relative;
+  }
+
+  .progress-fill::after {
+    content: '';
+    position: absolute;
+    inset: 0;
+    background: linear-gradient(90deg, transparent 0%, rgba(255,255,255,0.4) 100%);
+    border-radius: 3px;
+  }
+
+  .progress-label {
+    font-size: 0.8rem;
+    color: var(--muted);
+    white-space: nowrap;
+    min-width: 60px;
+    text-align: right;
+  }
+
+  /* Status icon */
+  .rank-status {
+    font-size: 1.4rem;
+    width: 36px;
+    text-align: center;
+    flex-shrink: 0;
+  }
+
+  /* S-Rank special */
+  .rank-item[data-rank="s"] .rank-badge {
+    background: linear-gradient(135deg, #2a2000 0%, #1a1500 100%);
+    border-color: var(--s-col);
+  }
+
+  .rank-item[data-rank="s"].active .rank-badge {
+    box-shadow: 0 0 20px var(--s-col), 0 0 60px var(--s-glow);
+  }
+
+  /* Quest panel */
+  .quest-panel {
+    background: var(--panel);
+    border: 1px solid var(--border);
+    border-radius: 16px;
+    padding: 32px;
+    text-align: center;
+    position: relative;
+    overflow: hidden;
+  }
+
+  .quest-panel::before {
+    content: '';
+    position: absolute;
+    top: 0; left: 0; right: 0;
+    height: 2px;
+    background: linear-gradient(90deg, transparent, var(--accent, #888), transparent);
+    transition: --accent 0.5s;
+  }
+
+  .quest-panel-title {
+    font-family: 'Cinzel Decorative', serif;
+    font-size: 1rem;
+    letter-spacing: 0.2em;
+    color: var(--muted);
+    text-transform: uppercase;
+    margin-bottom: 24px;
+  }
+
+  .current-rank-display {
+    display: flex;
+    align-items: center;
+    justify-content: center;
+    gap: 16px;
+    margin-bottom: 28px;
+  }
+
+  .big-badge {
+    width: 100px;
+    height: 100px;
+    border-radius: 16px;
+    display: flex;
+    align-items: center;
+    justify-content: center;
+    font-family: 'Cinzel Decorative', serif;
+    font-size: 3rem;
+    font-weight: 700;
+    border: 3px solid currentColor;
+    animation: pulse-badge 2.5s ease-in-out infinite;
+  }
+
+  .current-rank-text h2 {
+    font-size: 1.8rem;
+    font-weight: 700;
+    letter-spacing: 0.08em;
+    color: #fff;
+    text-align: left;
+  }
+
+  .current-rank-text p {
+    color: var(--muted);
+    font-size: 0.9rem;
+    text-align: left;
+    margin-top: 4px;
+  }
+
+  /* Quest count display */
+  .quest-count-display {
+    font-size: 3.5rem;
+    font-family: 'Cinzel Decorative', serif;
+    font-weight: 700;
+    color: #fff;
+    line-height: 1;
+    margin-bottom: 6px;
+  }
+
+  .quest-count-sub {
+    color: var(--muted);
+    font-size: 0.85rem;
+    letter-spacing: 0.15em;
+    text-transform: uppercase;
+    margin-bottom: 28px;
+  }
+
+  /* Submit button */
+  .submit-btn {
+    background: transparent;
+    border: 2px solid var(--btn-col, #888);
+    color: var(--btn-col, #888);
+    padding: 16px 48px;
+    border-radius: 8px;
+    font-family: 'Rajdhani', sans-serif;
+    font-size: 1.1rem;
+    font-weight: 700;
+    letter-spacing: 0.2em;
+    text-transform: uppercase;
+    cursor: pointer;
+    transition: all 0.25s ease;
+    position: relative;
+    overflow: hidden;
+  }
+
+  .submit-btn::before {
+    content: '';
+    position: absolute;
+    inset: 0;
+    background: var(--btn-col, #888);
+    opacity: 0;
+    transition: opacity 0.25s;
+  }
+
+  .submit-btn:hover::before { opacity: 0.12; }
+  .submit-btn:active { transform: scale(0.97); }
+
+  .submit-btn:hover {
+    box-shadow: 0 0 24px var(--btn-glow, transparent);
+  }
+
+  .submit-btn span { position: relative; z-index: 1; }
+
+  /* Rank up notification */
+  .rankup-overlay {
+    position: fixed;
+    inset: 0;
+    background: rgba(0,0,0,0.85);
+    z-index: 100;
+    display: flex;
+    align-items: center;
+    justify-content: center;
+    opacity: 0;
+    pointer-events: none;
+    transition: opacity 0.4s;
+  }
+
+  .rankup-overlay.visible {
+    opacity: 1;
+    pointer-events: all;
+  }
+
+  .rankup-box {
+    background: var(--panel);
+    border: 1px solid var(--border);
+    border-radius: 20px;
+    padding: 48px 56px;
+    text-align: center;
+    transform: scale(0.85);
+    transition: transform 0.4s cubic-bezier(0.34, 1.56, 0.64, 1);
+    position: relative;
+    overflow: hidden;
+    max-width: 420px;
+    width: 90%;
+  }
+
+  .rankup-overlay.visible .rankup-box {
+    transform: scale(1);
+  }
+
+  .rankup-box::before {
+    content: '';
+    position: absolute;
+    top: 0; left: 0; right: 0;
+    height: 3px;
+    background: var(--new-col, gold);
+    box-shadow: 0 0 20px var(--new-col, gold);
+  }
+
+  .rankup-label {
+    font-size: 0.75rem;
+    letter-spacing: 0.35em;
+    color: var(--muted);
+    text-transform: uppercase;
+    margin-bottom: 16px;
+  }
+
+  .rankup-title {
+    font-family: 'Cinzel Decorative', serif;
+    font-size: 2.5rem;
+    font-weight: 900;
+    color: var(--new-col, gold);
+    text-shadow: 0 0 40px var(--new-col, gold);
+    margin-bottom: 24px;
+    animation: glow-text 1.5s ease-in-out infinite;
+  }
+
+  @keyframes glow-text {
+    0%, 100% { text-shadow: 0 0 20px var(--new-col, gold); }
+    50%       { text-shadow: 0 0 60px var(--new-col, gold), 0 0 100px var(--new-col, gold); }
+  }
+
+  .rankup-new-badge {
+    width: 120px;
+    height: 120px;
+    border-radius: 20px;
+    display: flex;
+    align-items: center;
+    justify-content: center;
+    font-family: 'Cinzel Decorative', serif;
+    font-size: 3.5rem;
+    font-weight: 700;
+    border: 3px solid currentColor;
+    margin: 0 auto 24px;
+    animation: pulse-badge 1.5s ease-in-out infinite;
+  }
+
+  .rankup-desc {
+    color: var(--muted);
+    font-size: 0.9rem;
+    letter-spacing: 0.05em;
+    margin-bottom: 28px;
+  }
+
+  .rankup-close {
+    background: transparent;
+    border: 1px solid var(--border);
+    color: var(--text);
+    padding: 10px 32px;
+    border-radius: 6px;
+    font-family: 'Rajdhani', sans-serif;
+    font-size: 0.9rem;
+    letter-spacing: 0.15em;
+    text-transform: uppercase;
+    cursor: pointer;
+    transition: all 0.2s;
+  }
+
+  .rankup-close:hover {
+    border-color: var(--text);
+    background: rgba(255,255,255,0.05);
+  }
+
+  /* Particles */
+  .particle {
+    position: fixed;
+    pointer-events: none;
+    border-radius: 50%;
+    animation: float-up 1.5s ease-out forwards;
+    z-index: 99;
+  }
+
+  @keyframes float-up {
+    0%   { opacity: 1; transform: translateY(0) scale(1); }
+    100% { opacity: 0; transform: translateY(-120px) scale(0.3); }
+  }
+
+  /* S-Rank maxed */
+  .maxed-label {
+    display: inline-block;
+    background: linear-gradient(90deg, var(--s-col), #fff, var(--s-col));
+    -webkit-background-clip: text;
+    -webkit-text-fill-color: transparent;
+    background-clip: text;
+    font-size: 1.1rem;
+    letter-spacing: 0.3em;
+    font-weight: 700;
+    margin-bottom: 16px;
+    animation: shimmer 2s linear infinite;
+    background-size: 200%;
+  }
+
+  @keyframes shimmer {
+    0%   { background-position: 0% }
+    100% { background-position: 200% }
+  }
+</style>
+</head>
+<body>
+
+<div class="container">
+  <div class="title">RANG SYSTEM</div>
+  <div class="subtitle">Quest Fortschritt & Aufstieg</div>
+
+  <div class="rank-ladder" id="rankLadder"></div>
+
+  <div class="quest-panel" id="questPanel">
+    <div class="quest-panel-title">Aktueller Status</div>
+    <div class="current-rank-display">
+      <div class="big-badge" id="bigBadge"></div>
+      <div class="current-rank-text">
+        <h2 id="currentRankName"></h2>
+        <p id="currentRankDesc"></p>
+      </div>
+    </div>
+    <div class="quest-count-display" id="questCount">0</div>
+    <div class="quest-count-sub" id="questSub">Quests abgegeben</div>
+    <div style="margin-bottom: 24px;" id="panelProgressWrap">
+      <div class="progress-track" style="height:8px; margin-bottom:8px;">
+        <div class="progress-fill" id="panelProgress" style="width:0%;"></div>
+      </div>
+      <div style="font-size:0.85rem; color: var(--muted);" id="panelProgressLabel"></div>
+    </div>
+    <button class="submit-btn" id="submitBtn" onclick="submitQuest()">
+      <span>⚔ Quest abgeben</span>
+    </button>
+    <div id="maxedMessage" style="display:none;">
+      <div class="maxed-label">✦ MAXIMALER RANG ERREICHT ✦</div>
+      <p style="color: var(--muted); font-size: 0.9rem;">Du hast den S-Rang erreicht. Wahrhaftig legendär.</p>
+    </div>
+  </div>
+</div>
+
+<!-- Rank Up Overlay -->
+<div class="rankup-overlay" id="rankupOverlay">
+  <div class="rankup-box" id="rankupBox">
+    <div class="rankup-label">Aufstieg</div>
+    <div class="rankup-title" id="rankupTitle">RANG AUFSTIEG!</div>
+    <div class="rankup-new-badge" id="rankupBadge"></div>
+    <div class="rankup-desc" id="rankupDesc"></div>
+    <button class="rankup-close" onclick="closeRankup()">Weiter</button>
+  </div>
+</div>
+
+<script>
+const RANKS = [
+  {
+    id: 'e', label: 'E', name: 'E-Rang',
+    desc: 'Der Beginn jeder Legende. Zeig, was du drauf hast.',
+    color: '#7a8fa0', glow: '#7a8fa055',
+    questsNeeded: 15,
+  },
+  {
+    id: 'd', label: 'D', name: 'D-Rang',
+    desc: 'Du hast die Grundlagen bewiesen. Weiter so.',
+    color: '#7ab87a', glow: '#7ab87a55',
+    questsNeeded: 15,
+  },
+  {
+    id: 'c', label: 'C', name: 'C-Rang',
+    desc: 'Erfahren und verlässlich. Die Gilden bemerken dich.',
+    color: '#c0a050', glow: '#c0a05055',
+    questsNeeded: 15,
+  },
+  {
+    id: 'b', label: 'B', name: 'B-Rang',
+    desc: 'Einem echten Abenteurer würdig. Kein Rückzug mehr.',
+    color: '#6090d0', glow: '#6090d055',
+    questsNeeded: 15,
+  },
+  {
+    id: 'a', label: 'A', name: 'A-Rang',
+    desc: 'Elite. Nur wenige erreichen diese Stufe.',
+    color: '#d07030', glow: '#d0703055',
+    questsNeeded: 15,
+  },
+  {
+    id: 's', label: 'S', name: 'S-Rang',
+    desc: 'Legendär. Du bist eine lebende Geschichte.',
+    color: '#d4a020', glow: '#d4a02088',
+    questsNeeded: null,
+  },
+];
+
+// Load state
+let state = JSON.parse(localStorage.getItem('rankState') || 'null') || {
+  currentRankIndex: 0,
+  questsInCurrentRank: 0,
+};
+
+function saveState() {
+  localStorage.setItem('rankState', JSON.stringify(state));
+}
+
+function buildLadder() {
+  const ladder = document.getElementById('rankLadder');
+  ladder.innerHTML = '';
+
+  // Show in reverse (S at top, E at bottom)
+  const reversed = [...RANKS].reverse();
+
+  reversed.forEach((rank, i) => {
+    const realIndex = RANKS.length - 1 - i;
+    const item = document.createElement('div');
+    item.className = 'rank-item';
+    item.dataset.rank = rank.id;
+
+    if (realIndex === state.currentRankIndex) {
+      item.classList.add('active');
+      item.style.setProperty('--active-col', rank.color);
+      item.style.setProperty('--active-glow', rank.glow);
+    } else if (realIndex < state.currentRankIndex) {
+      item.classList.add('completed');
+    } else {
+      item.classList.add('locked');
+    }
+
+    let progressHtml = '';
+    if (realIndex === state.currentRankIndex && rank.questsNeeded) {
+      const pct = Math.min(100, (state.questsInCurrentRank / rank.questsNeeded) * 100);
+      progressHtml = `
+        <div class="progress-wrap" style="color: ${rank.color}">
+          <div class="progress-track">
+            <div class="progress-fill" style="width: ${pct}%; color: ${rank.color};"></div>
+          </div>
+          <div class="progress-label">${state.questsInCurrentRank} / ${rank.questsNeeded}</div>
+        </div>`;
+    } else if (realIndex < state.currentRankIndex) {
+      progressHtml = `<div class="progress-wrap" style="color: ${rank.color}">
+        <div class="progress-track"><div class="progress-fill" style="width:100%; color:${rank.color};"></div></div>
+        <div class="progress-label">✓ Fertig</div>
+      </div>`;
+    } else if (rank.questsNeeded) {
+      progressHtml = `<div class="progress-wrap"><div class="progress-track"></div><div class="progress-label">0 / ${rank.questsNeeded}</div></div>`;
+    }
+
+    let statusIcon = realIndex < state.currentRankIndex ? '✓' : realIndex === state.currentRankIndex ? '▶' : '🔒';
+
+    item.innerHTML = `
+      <div class="rank-badge ${rank.id}" style="color: ${rank.color}; background: ${rank.glow};">${rank.label}</div>
+      <div class="rank-info">
+        <div class="rank-name">${rank.name}</div>
+        <div class="rank-desc">${rank.desc}</div>
+        ${progressHtml}
+      </div>
+      <div class="rank-status">${statusIcon}</div>
+    `;
+    ladder.appendChild(item);
+  });
+}
+
+function updatePanel() {
+  const rank = RANKS[state.currentRankIndex];
+  const isMaxed = state.currentRankIndex === RANKS.length - 1;
+
+  // Color vars
+  document.getElementById('questPanel').style.setProperty('--accent', rank.color);
+  document.getElementById('submitBtn').style.setProperty('--btn-col', rank.color);
+  document.getElementById('submitBtn').style.setProperty('--btn-glow', rank.glow);
+
+  // Big badge
+  const bb = document.getElementById('bigBadge');
+  bb.textContent = rank.label;
+  bb.style.color = rank.color;
+  bb.style.background = rank.glow;
+  bb.style.borderColor = rank.color;
+  bb.style.boxShadow = `0 0 30px ${rank.glow}`;
+
+  document.getElementById('currentRankName').textContent = rank.name;
+  document.getElementById('currentRankDesc').textContent = rank.desc;
+  document.getElementById('questCount').textContent = state.questsInCurrentRank;
+  document.getElementById('questCount').style.color = rank.color;
+
+  if (isMaxed) {
+    document.getElementById('questSub').textContent = 'Quests abgegeben – Maximaler Rang!';
+    document.getElementById('panelProgressWrap').style.display = 'none';
+    document.getElementById('submitBtn').style.display = 'none';
+    document.getElementById('maxedMessage').style.display = 'block';
+  } else {
+    document.getElementById('questSub').textContent = `Quests abgegeben in diesem Rang`;
+    document.getElementById('panelProgressWrap').style.display = 'block';
+    document.getElementById('submitBtn').style.display = 'inline-block';
+    document.getElementById('maxedMessage').style.display = 'none';
+
+    const pct = Math.min(100, (state.questsInCurrentRank / rank.questsNeeded) * 100);
+    const fill = document.getElementById('panelProgress');
+    fill.style.width = pct + '%';
+    fill.style.color = rank.color;
+    document.getElementById('panelProgressLabel').textContent =
+      `${state.questsInCurrentRank} / ${rank.questsNeeded} Quests für Aufstieg zu ${RANKS[state.currentRankIndex + 1].name}`;
+  }
+}
+
+function spawnParticles(color) {
+  const btn = document.getElementById('submitBtn');
+  const rect = btn.getBoundingClientRect();
+  for (let i = 0; i < 14; i++) {
+    const p = document.createElement('div');
+    p.className = 'particle';
+    const size = 4 + Math.random() * 6;
+    p.style.cssText = `
+      width:${size}px; height:${size}px;
+      background:${color};
+      left:${rect.left + Math.random() * rect.width}px;
+      top:${rect.top}px;
+      animation-delay:${Math.random() * 0.3}s;
+      animation-duration:${0.8 + Math.random() * 0.8}s;
+    `;
+    document.body.appendChild(p);
+    setTimeout(() => p.remove(), 2000);
+  }
+}
+
+function showRankup(newRank) {
+  const overlay = document.getElementById('rankupOverlay');
+  const box = document.getElementById('rankupBox');
+
+  document.getElementById('rankupTitle').textContent = 'RANG AUFSTIEG!';
+  document.getElementById('rankupTitle').style.color = newRank.color;
+
+  const badge = document.getElementById('rankupBadge');
+  badge.textContent = newRank.label;
+  badge.style.color = newRank.color;
+  badge.style.background = newRank.glow;
+  badge.style.borderColor = newRank.color;
+
+  document.getElementById('rankupDesc').textContent =
+    `Du hast ${newRank.name} erreicht! ${newRank.desc}`;
+
+  box.style.setProperty('--new-col', newRank.color);
+
+  overlay.classList.add('visible');
+}
+
+function closeRankup() {
+  document.getElementById('rankupOverlay').classList.remove('visible');
+}
+
+function submitQuest() {
+  const rank = RANKS[state.currentRankIndex];
+  if (!rank.questsNeeded) return;
+
+  spawnParticles(rank.color);
+
+  state.questsInCurrentRank++;
+
+  if (state.questsInCurrentRank >= rank.questsNeeded) {
+    // Rank up!
+    if (state.currentRankIndex < RANKS.length - 1) {
+      state.currentRankIndex++;
+      state.questsInCurrentRank = 0;
+      saveState();
+      buildLadder();
+      updatePanel();
+      setTimeout(() => showRankup(RANKS[state.currentRankIndex]), 400);
+      return;
+    }
+  }
+
+  saveState();
+  buildLadder();
+  updatePanel();
+}
+
+// Init
+buildLadder();
+updatePanel();
+</script>
+</body>
+</html>
